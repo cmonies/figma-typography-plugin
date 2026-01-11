@@ -2,6 +2,7 @@ import {
   PluginConfig,
   StyleDefinition,
   StyleCategory,
+  ExportData,
 } from '../types';
 import { loadFontWithFallback } from './styles';
 import { getCategoryDisplayName } from '../utils/naming';
@@ -20,6 +21,7 @@ const COLORS = {
 const PAGE_NAME = 'Typography';
 const DESKTOP_FRAME_NAME = 'Desktop Specimen';
 const MOBILE_FRAME_NAME = 'Mobile Specimen';
+const EXPORTS_FRAME_NAME = 'Code Exports';
 
 // Layout constants
 const FRAME_PADDING = 64;
@@ -99,7 +101,7 @@ function getOrCreateTypographyPage(): PageNode {
  */
 function removeExistingSpecimens(page: PageNode): void {
   // Include legacy frame name for cleanup
-  const framesToRemove = [DESKTOP_FRAME_NAME, MOBILE_FRAME_NAME, 'Typography Specimen'];
+  const framesToRemove = [DESKTOP_FRAME_NAME, MOBILE_FRAME_NAME, EXPORTS_FRAME_NAME, 'Typography Specimen'];
   for (const frameName of framesToRemove) {
     const existing = page.children.find(c => c.name === frameName);
     if (existing) {
@@ -437,12 +439,170 @@ async function createSingleSpecimen(
 }
 
 /**
+ * Create a code block with title and content
+ */
+async function createCodeBlock(
+  title: string,
+  content: string,
+  config: PluginConfig
+): Promise<FrameNode> {
+  const block = figma.createFrame();
+  block.name = title;
+  block.layoutMode = 'VERTICAL';
+  block.primaryAxisSizingMode = 'AUTO';
+  block.counterAxisSizingMode = 'AUTO';
+  block.itemSpacing = 12;
+  block.fills = [];
+
+  const labelFont = await getUIFont(config, false);
+  const boldFont = await getUIFont(config, true);
+
+  // Title
+  const titleText = figma.createText();
+  titleText.fontName = boldFont;
+  titleText.fontSize = 16;
+  titleText.characters = title;
+  titleText.fills = [{ type: 'SOLID', color: COLORS.text }];
+  block.appendChild(titleText);
+
+  // Code container with background
+  const codeContainer = figma.createFrame();
+  codeContainer.name = 'Code';
+  codeContainer.layoutMode = 'VERTICAL';
+  codeContainer.primaryAxisSizingMode = 'AUTO';
+  codeContainer.counterAxisSizingMode = 'AUTO';
+  codeContainer.paddingTop = 16;
+  codeContainer.paddingBottom = 16;
+  codeContainer.paddingLeft = 16;
+  codeContainer.paddingRight = 16;
+  codeContainer.cornerRadius = 8;
+  codeContainer.fills = [{ type: 'SOLID', color: { r: 0.12, g: 0.12, b: 0.14 } }];
+
+  // Try to use a monospace font for code
+  let codeFont: { family: string; style: string };
+  try {
+    codeFont = await loadFontWithFallback(config.categories.code.fontFamily, 'Regular');
+  } catch {
+    codeFont = labelFont;
+  }
+
+  // Code text
+  const codeText = figma.createText();
+  codeText.fontName = codeFont;
+  codeText.fontSize = 12;
+  codeText.lineHeight = { value: 18, unit: 'PIXELS' };
+
+  // Truncate very long content to avoid performance issues
+  const maxLength = 8000;
+  const displayContent = content.length > maxLength
+    ? content.substring(0, maxLength) + '\n\n... (truncated for display)'
+    : content;
+
+  codeText.characters = displayContent;
+  codeText.fills = [{ type: 'SOLID', color: { r: 0.9, g: 0.9, b: 0.9 } }];
+  codeText.resize(800, codeText.height);
+  codeText.textAutoResize = 'HEIGHT';
+
+  codeContainer.appendChild(codeText);
+  block.appendChild(codeContainer);
+
+  return block;
+}
+
+/**
+ * Create the exports artboard with code blocks
+ */
+async function createExportsArtboard(
+  config: PluginConfig,
+  exportData: ExportData,
+  page: PageNode,
+  xOffset: number,
+  onProgress?: (message: string, percent: number) => void
+): Promise<FrameNode> {
+  onProgress?.('Creating exports artboard...', 0);
+
+  const frame = createSpecimenFrame(EXPORTS_FRAME_NAME);
+  page.appendChild(frame);
+  frame.x = xOffset;
+  frame.y = 0;
+
+  // Get UI fonts
+  const boldFont = await getUIFont(config, true);
+  const regularFont = await getUIFont(config, false);
+
+  // Header
+  const header = figma.createFrame();
+  header.name = 'Header';
+  header.layoutMode = 'VERTICAL';
+  header.primaryAxisSizingMode = 'AUTO';
+  header.counterAxisSizingMode = 'AUTO';
+  header.itemSpacing = 12;
+  header.fills = [];
+
+  const title = figma.createText();
+  title.fontName = boldFont;
+  title.fontSize = 48;
+  title.characters = 'Code Exports';
+  title.fills = [{ type: 'SOLID', color: COLORS.text }];
+  header.appendChild(title);
+
+  const subtitle = figma.createText();
+  subtitle.fontName = regularFont;
+  subtitle.fontSize = 16;
+  subtitle.characters = 'Copy and paste these outputs into your project';
+  subtitle.fills = [{ type: 'SOLID', color: COLORS.textMuted }];
+  header.appendChild(subtitle);
+
+  // Divider
+  const divider = figma.createRectangle();
+  divider.name = 'Divider';
+  divider.resize(1000, 1);
+  divider.fills = [{ type: 'SOLID', color: COLORS.border }];
+  header.appendChild(divider);
+
+  frame.appendChild(header);
+
+  // Add code blocks for each enabled export
+  let progress = 20;
+  const exports: { key: keyof ExportData; title: string; filename: string }[] = [
+    { key: 'json', title: 'JSON Tokens', filename: 'typography-tokens.json' },
+    { key: 'yaml', title: 'YAML Tokens', filename: 'typography-tokens.yaml' },
+    { key: 'css', title: 'CSS Variables', filename: 'typography.css' },
+    { key: 'tailwind', title: 'Tailwind Config', filename: 'tailwind.config.js' },
+  ];
+
+  for (const exp of exports) {
+    const content = exportData[exp.key];
+    if (content) {
+      onProgress?.(`Adding ${exp.title}...`, progress);
+
+      try {
+        const codeBlock = await createCodeBlock(
+          `${exp.title} (${exp.filename})`,
+          content,
+          config
+        );
+        frame.appendChild(codeBlock);
+      } catch (err) {
+        console.error(`Failed to create ${exp.title} block:`, err);
+      }
+
+      progress += 20;
+    }
+  }
+
+  onProgress?.('Exports artboard complete', 100);
+  return frame;
+}
+
+/**
  * Create the complete specimen frame(s)
  */
 export async function createSpecimen(
   config: PluginConfig,
   styles: StyleDefinition[],
   textStyles: TextStyle[],
+  exportData?: ExportData,
   onProgress?: (message: string, percent: number) => void
 ): Promise<FrameNode> {
   // Reset cached fonts
@@ -491,7 +651,6 @@ export async function createSpecimen(
     frames.push(mobileFrame);
   } else {
     // Non-responsive: create single Desktop specimen
-    const desktopStyles = styles.filter(s => s.breakpoint === null || s.breakpoint === 'desktop');
     const desktopFrame = await createSingleSpecimen(
       config,
       styles,
@@ -503,6 +662,24 @@ export async function createSpecimen(
       0
     );
     frames.push(desktopFrame);
+  }
+
+  // Calculate x offset for exports artboard
+  const lastFrame = frames[frames.length - 1];
+  const exportsXOffset = lastFrame.x + lastFrame.width + 100;
+
+  // Create exports artboard if there's export data
+  const hasExports = exportData && (exportData.json || exportData.yaml || exportData.css || exportData.tailwind);
+  if (hasExports) {
+    onProgress?.('Creating exports artboard...', 85);
+    const exportsFrame = await createExportsArtboard(
+      config,
+      exportData,
+      page,
+      exportsXOffset,
+      (msg, pct) => onProgress?.(msg, 85 + pct * 0.1)
+    );
+    frames.push(exportsFrame);
   }
 
   // Zoom to fit all frames

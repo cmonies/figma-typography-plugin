@@ -92,20 +92,20 @@ async function generate(config: PluginConfig): Promise<void> {
       postMessage({ type: 'progress', message: `Created ${varCount} variables`, percent: 60 });
     }
 
+    // Generate export data first (needed for exports artboard)
+    postMessage({ type: 'progress', message: 'Generating export files...', percent: 65 });
+    const exportData = generateExports(styleDefs, config);
+
     // Create specimen frame if enabled
     if (config.exports.specimen) {
-      postMessage({ type: 'progress', message: 'Creating specimen frame...', percent: 65 });
+      postMessage({ type: 'progress', message: 'Creating specimen frame...', percent: 70 });
 
-      await createSpecimen(config, styleDefs, textStyles, (msg, pct) => {
-        postMessage({ type: 'progress', message: msg, percent: 65 + pct * 0.25 });
+      await createSpecimen(config, styleDefs, textStyles, exportData, (msg, pct) => {
+        postMessage({ type: 'progress', message: msg, percent: 70 + pct * 0.25 });
       });
 
-      postMessage({ type: 'progress', message: 'Specimen created', percent: 90 });
+      postMessage({ type: 'progress', message: 'Specimen created', percent: 95 });
     }
-
-    // Generate export data
-    postMessage({ type: 'progress', message: 'Generating export files...', percent: 92 });
-    const exportData = generateExports(styleDefs, config);
 
     // Complete
     postMessage({

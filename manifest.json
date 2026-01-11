@@ -1,6 +1,6 @@
 {
-  "name": "Typography Generator",
-  "id": "typographygeneratorplugin",
+  "name": "DS Type Tokens",
+  "id": "dstypetokensplugin",
   "api": "1.0.0",
   "main": "dist/code.js",
   "ui": "dist/ui.html",

@@ -1,8 +1,8 @@
-# Typography Generator
+# DS Type Tokens
 
 A Figma plugin for generating complete typography systems with text styles, variables, and design tokens.
 
-![Typography Generator](assets/icon.png)
+![DS Type Tokens](assets/icon.png)
 
 ## Features
 
@@ -16,7 +16,7 @@ A Figma plugin for generating complete typography systems with text styles, vari
 ## Installation
 
 ### From Figma Community
-Search for "Typography Generator" in Figma's plugin browser.
+Search for "DS Type Tokens" in Figma's plugin browser.
 
 ### For Development
 ```bash

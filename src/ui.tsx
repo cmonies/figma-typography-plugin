@@ -140,7 +140,7 @@ function App() {
     <div id="app">
       {/* Header */}
       <div class="header">
-        <h1>Typography Generator</h1>
+        <h1>DS Type Tokens</h1>
         <p>Create text styles, specimens, and design tokens</p>
       </div>
 

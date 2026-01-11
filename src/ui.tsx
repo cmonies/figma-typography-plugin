@@ -65,6 +65,10 @@ function App() {
     };
 
     window.addEventListener('message', handler);
+
+    // Request fonts on mount
+    parent.postMessage({ pluginMessage: { type: 'get-fonts' } }, '*');
+
     return () => window.removeEventListener('message', handler);
   }, []);
 
@@ -118,10 +122,23 @@ function App() {
     URL.revokeObjectURL(url);
   };
 
-  // Copy to clipboard
-  const copyToClipboard = async (content: string, key: string) => {
+  // Copy to clipboard (using fallback for Figma sandbox)
+  const copyToClipboard = (content: string, key: string) => {
     try {
-      await navigator.clipboard.writeText(content);
+      // Create a temporary textarea element
+      const textarea = document.createElement('textarea');
+      textarea.value = content;
+      textarea.style.position = 'fixed';
+      textarea.style.left = '-9999px';
+      textarea.style.top = '-9999px';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+
+      // Execute copy command
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+
       setCopiedKey(key);
       setTimeout(() => setCopiedKey(null), 2000);
     } catch (err) {

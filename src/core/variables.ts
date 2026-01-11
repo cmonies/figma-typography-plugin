@@ -67,10 +67,12 @@ function buildVariableName(
   parts.push(style.category);
 
   // Add size name (lowercase)
-  parts.push(style.sizeName.toLowerCase());
+  if (style.sizeName) {
+    parts.push(style.sizeName.toLowerCase());
+  }
 
   // Add weight if not Regular
-  if (style.fontStyle !== 'Regular') {
+  if (style.fontStyle && style.fontStyle !== 'Regular') {
     parts.push(style.fontStyle.toLowerCase());
   }
 

@@ -36,7 +36,8 @@ function getTailwindLineHeight(fontSize: number, lineHeight: number): string {
 /**
  * Get Tailwind font-weight class
  */
-function getTailwindFontWeight(weight: string): string {
+function getTailwindFontWeight(weight: string | undefined): string {
+  if (!weight) return 'font-normal';
   const w = weight.toLowerCase();
   if (w.includes('thin') || w.includes('hairline')) return 'font-thin';
   if (w.includes('extralight') || w.includes('ultra light')) return 'font-extralight';
@@ -88,7 +89,8 @@ export function generateStyleDescription(
 /**
  * Get font weight number from style name
  */
-export function getFontWeightNumber(weight: string): number {
+export function getFontWeightNumber(weight: string | undefined): number {
+  if (!weight) return 400;
   const w = weight.toLowerCase();
   if (w.includes('thin') || w.includes('hairline')) return 100;
   if (w.includes('extralight') || w.includes('ultra light')) return 200;

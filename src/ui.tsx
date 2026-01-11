@@ -35,6 +35,7 @@ function App() {
   const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [exportData, setExportData] = useState<ExportData | null>(null);
   const [expandedCategory, setExpandedCategory] = useState<StyleCategory | null>('body');
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   // Listen for messages from plugin
   useEffect(() => {
@@ -117,6 +118,24 @@ function App() {
     URL.revokeObjectURL(url);
   };
 
+  // Copy to clipboard
+  const copyToClipboard = async (content: string, key: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  // Reset to defaults
+  const handleReset = () => {
+    setConfig(DEFAULT_CONFIG);
+    setExportData(null);
+    setStatus(null);
+  };
+
   return (
     <div id="app">
       {/* Header */}
@@ -159,6 +178,8 @@ function App() {
             setConfig={setConfig}
             exportData={exportData}
             onDownload={downloadFile}
+            onCopy={copyToClipboard}
+            copiedKey={copiedKey}
           />
         )}
       </div>
@@ -187,6 +208,14 @@ function App() {
             {status.message}
           </div>
         )}
+
+        <button
+          class="btn-reset"
+          onClick={handleReset}
+          disabled={isGenerating}
+        >
+          Reset to Defaults
+        </button>
       </div>
     </div>
   );
@@ -567,9 +596,11 @@ interface ExportTabProps {
   setConfig: (config: PluginConfig) => void;
   exportData: ExportData | null;
   onDownload: (content: string, filename: string, type: string) => void;
+  onCopy: (content: string, key: string) => void;
+  copiedKey: string | null;
 }
 
-function ExportTab({ config, setConfig, exportData, onDownload }: ExportTabProps) {
+function ExportTab({ config, setConfig, exportData, onDownload, onCopy, copiedKey }: ExportTabProps) {
   const updateExports = (key: keyof PluginConfig['exports'], value: boolean | UIToolkit | FigmaOutputMode) => {
     setConfig({
       ...config,
@@ -598,6 +629,13 @@ function ExportTab({ config, setConfig, exportData, onDownload }: ExportTabProps
     { value: 'baseui', label: 'Base UI' },
     { value: 'chakra', label: 'Chakra UI' },
     { value: 'radix', label: 'Radix Themes' },
+  ];
+
+  const fileExports: { key: keyof ExportData; label: string; filename: string; mime: string }[] = [
+    { key: 'json', label: 'JSON Tokens', filename: 'typography-tokens.json', mime: 'application/json' },
+    { key: 'yaml', label: 'YAML Tokens', filename: 'typography-tokens.yaml', mime: 'text/yaml' },
+    { key: 'css', label: 'CSS Variables', filename: 'typography.css', mime: 'text/css' },
+    { key: 'tailwind', label: 'Tailwind Config', filename: 'tailwind-typography.js', mime: 'text/javascript' },
   ];
 
   return (
@@ -660,43 +698,37 @@ function ExportTab({ config, setConfig, exportData, onDownload }: ExportTabProps
 
       {exportData && (
         <div class="section">
-          <div class="section-title">Download Files</div>
-          {exportData.json && (
-            <button
-              class="btn"
-              style={{ marginBottom: '8px', background: 'var(--figma-color-bg-secondary)' }}
-              onClick={() => onDownload(exportData.json!, 'typography-tokens.json', 'application/json')}
-            >
-              Download JSON Tokens
-            </button>
-          )}
-          {exportData.yaml && (
-            <button
-              class="btn"
-              style={{ marginBottom: '8px', background: 'var(--figma-color-bg-secondary)' }}
-              onClick={() => onDownload(exportData.yaml!, 'typography-tokens.yaml', 'text/yaml')}
-            >
-              Download YAML Tokens
-            </button>
-          )}
-          {exportData.css && (
-            <button
-              class="btn"
-              style={{ marginBottom: '8px', background: 'var(--figma-color-bg-secondary)' }}
-              onClick={() => onDownload(exportData.css!, 'typography.css', 'text/css')}
-            >
-              Download CSS Variables
-            </button>
-          )}
-          {exportData.tailwind && (
-            <button
-              class="btn"
-              style={{ marginBottom: '8px', background: 'var(--figma-color-bg-secondary)' }}
-              onClick={() => onDownload(exportData.tailwind!, 'tailwind-typography.js', 'text/javascript')}
-            >
-              Download Tailwind Config
-            </button>
-          )}
+          <div class="section-title">Export Files</div>
+          {fileExports.map(exp => {
+            const content = exportData[exp.key];
+            if (!content) return null;
+            const isCopied = copiedKey === exp.key;
+
+            return (
+              <div key={exp.key} class="export-card">
+                <div class="export-card-header">
+                  <div>
+                    <div class="export-card-title">{exp.label}</div>
+                    <div class="export-card-desc">{exp.filename}</div>
+                  </div>
+                </div>
+                <div class="export-actions">
+                  <button
+                    class={`export-btn copy ${isCopied ? 'copied' : ''}`}
+                    onClick={() => onCopy(content, exp.key)}
+                  >
+                    {isCopied ? 'Copied!' : 'Copy'}
+                  </button>
+                  <button
+                    class="export-btn download"
+                    onClick={() => onDownload(content, exp.filename, exp.mime)}
+                  >
+                    Download
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </>

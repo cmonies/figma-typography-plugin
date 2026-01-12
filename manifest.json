@@ -1,8 +1,12 @@
 {
   "name": "DS Type Tokens",
-  "id": "dstypetokensplugin",
+  "id": "1592439242901592015",
   "api": "1.0.0",
   "main": "dist/code.js",
   "ui": "dist/ui.html",
-  "editorType": ["figma"]
+  "editorType": ["figma"],
+  "networkAccess": {
+    "allowedDomains": "none"
+  },
+  "documentAccess": "dynamic-page"
 }

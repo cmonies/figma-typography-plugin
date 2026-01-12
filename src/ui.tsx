@@ -128,19 +128,29 @@ function App() {
       // Create a temporary textarea element
       const textarea = document.createElement('textarea');
       textarea.value = content;
-      textarea.style.position = 'fixed';
+      textarea.setAttribute('readonly', ''); // Prevent keyboard from showing on mobile
+      textarea.style.position = 'absolute';
       textarea.style.left = '-9999px';
-      textarea.style.top = '-9999px';
+      textarea.style.top = '0';
+      textarea.style.opacity = '0';
       document.body.appendChild(textarea);
-      textarea.focus();
-      textarea.select();
 
-      // Execute copy command
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
+      // Use a slight delay to ensure DOM is ready
+      requestAnimationFrame(() => {
+        textarea.focus();
+        textarea.select();
+        textarea.setSelectionRange(0, content.length); // For mobile
 
-      setCopiedKey(key);
-      setTimeout(() => setCopiedKey(null), 2000);
+        try {
+          document.execCommand('copy');
+          setCopiedKey(key);
+          setTimeout(() => setCopiedKey(null), 2000);
+        } catch (copyErr) {
+          console.error('Copy command failed:', copyErr);
+        }
+
+        document.body.removeChild(textarea);
+      });
     } catch (err) {
       console.error('Failed to copy:', err);
     }
